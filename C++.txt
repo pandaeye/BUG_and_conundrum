@@ -1,7 +1,7 @@
-����
-����new�����ڴ���󣬱���
-ԭ��
-�ڵ���newǰʹ��memset��ĳ��ָ��ָ��ĵ�ַ֮���һ���ڴ���Ϊ��0���ƻ��˶ѡ�
+现象：
+调用new导致内存错误，崩溃
+原因：
+在调用new前使用memset将某个指针指向的地址之后的一段内存置为了0，破坏了堆。
 class Word
 {
 public:	
@@ -11,15 +11,22 @@ public:
 	Word()
 	{
 		num = 0;
-		memset(pWord,NULL,sizeof(pWord)*WORD_NUM);//���������
+		memset(pWord,NULL,sizeof(pWord)*WORD_NUM);//问题出错点
 	};
 	virtual ~Word()
 	{
 	};
 };
 
-����
-���̶��Ĵ��������������1��������2��������3���ڴ汨��
-ԭ��
-��ĳ����ĺ�������delete������Ķ��������������µĶ���
-��Ϊ�ڵ��øú���ʱ���ö���ĵ�ַ�Ѿ����뺯���У�֮��ʹ�øö��������ʱ���õ���ԭ�����ַ+ƫ�Ƶ�ַ����ʽ���������Ե�ֵ�޷�Ԥ�⡣��ʱָ�����Եĵ�ַ�ǷǷ���ַ��������ڴ汨������ʱ���Ե�ֵ�ǳ����ں�����ͷ��ѭ���н����Ĵ���ʱ�䣬���¿�������ʱ����ֵ�������������������ǽ���޷�Ԥ�⡣
+现象：
+不固定的错误，有三种情况：1、正常；2、卡死；3、内存报错
+原因：
+在某个类的函数里面delete掉该类的对象，再重新生成新的对象。
+因为在调用该函数时，该对象的地址已经传入函数中，之后使用该对象的属性时，用的是原对象地址+偏移地址的形式。所以属性的值无法预测。有时指向属性的地址是非法地址，则出现内存报错。有时属性的值非常大，在函数开头的循环中将消耗大量时间，导致卡死。有时属性值正常，程序正常，但是结果无法预测。
+
+编译报错：
+no matching function for call to 'TransformPoint::Scale(int, int, double&, double&)
+ts.Scale(point1.x(),point1.y(),m_dScale,m_dScale);
+原因：
+函数原型为void Scale(int& oriX, int& oriY, double ScaleX, double ScaleY);
+point1.x(),point1.y(),m_dScale这三个变量都是私有成员，不能在类外使用
