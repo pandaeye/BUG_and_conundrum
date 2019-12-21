@@ -1,0 +1,502 @@
+move
+jump_start
+jump_air
+jump_end
+hit
+maic
+
+move-hit         stop start
+move-jump        stop start
+jump_start-move  wait
+jump_start-hit   wait
+jump_air-move    wait
+jump_air-hit
+jump_end-move    wait
+jump_end-hit     wait
+hit-move         wait
+hit-jump         wait
+
+武器
+刀，散弹枪，炮
+道具
+地雷（cd：1s），环绕守护刀（可发射），
+技能
+侧移
+class WL_FrameNode
+{
+pubile:
+	virtual void update() = 0;
+protected:
+
+}
+
+class scene
+{
+private:
+	//vector<Map*>;
+	//vector<Monster*>;
+	vector<Player*> m_vecPlayer;
+	//vector<Building*>;//breakable
+public:
+	scene()
+	{
+		WL_Player* player = new WL_Player();
+		m_vecPlayer.push_back(player);
+	}
+	~scene()
+	{
+		for(int i = 0;i<m_vecPlayer.size();i++)
+		{
+			delete m_vecPlayer[i];
+			m_vecPlayer[i] = nullptr;
+		}
+	}
+	update()
+	{
+		inputmanager->update()
+		//mapmanager->update()
+		for(int i = 0;i<m_vecPlayer.size();i++)
+		{
+			m_vecPlayer[i]->update();
+		}
+		m_gCollisionManager->update()
+		randermanager->update()
+	}
+}
+bool IsPointInRect(const WL_Point& pt, const WL_Rect rt)
+{
+	if ((rt.left > pt.x) ||
+		(rt.right <= pt.x) ||
+		(rt.top > pt.y) ||
+		(rt.bottom <= pt.y))
+	{
+		return false;
+	}
+
+	return true;
+}
+class WL_Monster
+{
+pricate:
+	WL_Animation* m_pAnimation;
+	PlayerState m_nState;
+	int m_nAnimationID;
+	int m_nCurrentFrameIndex;
+	int m_nMaxFrame;
+	int x;
+	int y;
+	float angel;
+public:
+	update()
+	{
+		if(IsPointInRect(Player->GetPos(), WL_Rect(x, y, x+100, y+100) && !PointInRect(Player->GetPos(), WL_Rect(x, y, x+5, y+5))
+		{
+			x = drawline().x;
+			y = drawline().y;
+			m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Run);
+			m_nCurrentFrameIndex = 0;
+			m_nMaxFrame = m_pAnimation->GetMaxFram();
+			m_nState = Run;
+		}
+		if(IsPointInRect(Player->GetPos(), WL_Rect(x, y, x+5, y+5))
+		{
+			m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Attack);
+			m_nCurrentFrameIndex = 0;
+			m_nMaxFrame = m_pAnimation->GetMaxFram();
+			m_nState = Attack;
+		}
+	}
+}
+class WL_Player
+{
+pricate:
+	WL_Animation* m_pAnimation;
+//	WL_AnimationState* m_pAction;
+	PlayerState m_nState;
+	int m_nAnimationID;
+	int m_nCurrentFrameIndex;
+	int m_nMaxFrame;
+	int x;
+	int y;
+	float angel;
+public:
+	WL_Player()
+	{
+		m_nRoleIDInDB = 1;
+//		m_pAction = new m_pAction(WL_AnimationState);
+		m_nCurrentFrameIndex = 0;
+		m_nMaxFrame = 0;
+		x = 500;
+		y = 500;
+	}
+	~WL_Plyer()
+	{
+//		delete m_pAction;
+//		m_pAction = nullptr;
+	}
+	update()
+	{
+		if(m_nCurrentFrameIndex>=m_nMaxFrame)
+		{
+			m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Stand);
+			m_nCurrentFrameIndex = 0;
+			m_nMaxFrame = m_pAnimation->GetMaxFram();
+			m_nState = Stand;
+		}
+		//input
+		if(m_gInputManeger->IsPressed(KC_A))
+		{
+			x--;
+			if(m_nState != JumpAir && m_nState != Jump && m_nState != Run)
+			{
+				m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Run);
+				m_nCurrentFrameIndex = 0;
+				m_nMaxFrame = m_pAnimation->GetMaxFram();
+				m_nState = Run;
+			}
+		}
+		if(m_gInputManeger->IsPressed(KC_D))
+		{
+			x++;
+			if(m_nState != JumpAir && m_nState != Jump && m_nState != Run)
+			{
+				m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Run);
+				m_nCurrentFrameIndex = 0;
+				m_nMaxFrame = m_pAnimation->GetMaxFram();
+				m_nState = Run;
+			}
+		}
+		if(m_gInputManeger->IsPressed(KC_M))
+		{
+			if(m_nState != JumpAir && m_nState != Jump)
+			{
+				m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Jump);
+				m_nCurrentFrameIndex = 0;
+				m_nMaxFrame = m_pAnimation->GetMaxFram();
+				m_nState = Jump;
+			}
+			
+		}
+		if(m_gInputManeger->IsPressed(KC_J))
+		{
+			if(m_nState != Jump && m_nState != Attack)
+			{
+				m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Attack);
+				m_nCurrentFrameIndex = 0;
+				m_nMaxFrame = m_pAnimation->GetMaxFram();
+				m_nState = Attack;
+			}
+		}
+
+		//
+		if(m_nState == Jump)
+		{
+			if(m_nCurrentFrameIndex==3)
+			{
+				m_nState = JumpAir;
+			}
+		}
+
+		//
+		if(m_pAnimation != nullptr)
+		{
+			m_gRanderManeger->AddImage(x, y, m_pAnimation->GetFrame(m_nCurrentFrameIndex);
+		}
+		m_nCurrentFrameIndex++;
+	}
+}
+
+common.cpp
+#include <string>
+using namespace std;
+vector<string> WL_Split(const string& str, const string& delims)
+{
+    vector<string> ret;
+
+    size_t start, pos;
+    start = 0;
+    do 
+    {
+        pos = str.find_first_of(delims, start);
+        if (pos == start)
+        {
+            start = pos + 1;
+        }
+        else if (pos == String::npos)
+        {
+            // Copy the rest of the string
+            ret.push_back( str.substr(start) );
+            break;
+        }
+        else
+        {
+            // Copy up to delimiter
+            ret.push_back( str.substr(start, pos - start) );
+            start = pos + 1;
+        }
+        // parse up to next real data
+        start = str.find_first_not_of(delims, start);
+
+    } while (pos != String::npos);
+
+    return ret;
+}
+
+int StringToInt(string val)
+{
+    return atoi(val.c_str());
+}
+
+string IntToString(int val)
+{
+	return to_string(val);
+}
+
+WL_DB.h
+#pragma once
+#include <string>
+#include <map>
+#include <vector>
+#include <sqlite3.h>
+using namespace std;
+class WL_DB
+{
+privete:
+	sqlite3* m_pDB;
+	string m_sErrMsg;
+	static vector<map<string, string>> m_vecResult;
+	string m_sFileName;
+
+	static int callback(void *NotUsed, int argc, char **argv, char **azColName);
+public:
+	WL_DB(const string sFileName);
+	virtual ~WL_DB();
+	void OpenDB(const string sFileName);
+	void Execute(const string sSql);
+	void CloseDB();
+	string GetError();
+	vector<map<string, string>> GetResult();
+	int GetRecordCount();
+}
+WL_DB.cpp
+#include "WL_DB.h"
+vector<map<string, string>> WL_DB::m_vecResult;
+int WL_DB::callback(void *NotUsed, int argc, char **argv, char **azColName)
+{
+	map<string, string> map;
+	for(i=0; i<argc; i++)
+	{
+		map[azColName[i]] = argv[i] ? argv[i] : "NULL";
+	}
+	m_vecResult.push_back(map);
+	return 0;
+}
+
+WL_DB::WL_DB(const string sFileName)
+{
+	OpenDB(sFileName);
+}
+
+WL_DB::~WL_DB()
+{
+	CloseDB();
+}
+
+void WL_DB::OpenDB(const string sFileName)
+{
+	if(sqlite3_open(sFileName.c_str(), &m_pDB))
+	{
+		m_sErrMsg = sqlite3_errmsg(m_pDB);
+		CloseDB();
+		return;
+	}
+}
+
+void WL_DB::Execute(const string sSql)
+{
+	char* zErrMsg = nullptr;
+	if(m_pDB == nullptr)
+	{
+		m_sErrMsg =  "m_pDB is nullptr";
+		return;
+	}
+	if(sqlite3_exec(m_pDB, sSql.c_str(), callback, 0, &zErrMsg))
+	{
+		m_sErrMsg = zErrMsg;
+		sqlite3_free(zErrMsg);
+	}
+}
+
+void WL_DB::CloseDB()
+{
+	sqlite3_close(m_pDB);
+	m_pDB = null;
+}
+
+string WL_DB::GetError()
+{
+	return m_sErrMsg;
+}
+
+vector<map<string, string>> WL_DB::GetResult()
+{
+	return m_mapResult;
+}
+
+int WL_DB::GetRecordCount()
+{
+	return m_vecResult.size();;
+}
+tabledata file :.td
+WL_UI
+UIID(ObjectID) Image describe
+WL_Role:public//player、monster
+RoleID(ObjectID) MaxHp MaxMp Action(1,2,3) Image describe
+WL_Skill:public
+SkillID Attack
+WL_Item:
+ItemID Attack effect 
+WL_Animation
+AnimationID ObjectID TypeID Frame(1,2,3) describe
+WL_Image
+ImageID FileName FileSubID SrcX SrcY DstX DstY angle width height
+WL_Map
+MapID Monster(RoleID:1,2,3) item(1,2,3) building(1,2,3)
+class WL_Animation
+{
+private:
+	int m_nObjectID;
+	int m_nTypeID;
+	vector<int> m_vecFrame;
+public:
+	int Frame(int index);
+	{
+		m_vecFrame[index];
+	}
+}
+/*
+class WL_AnimationState
+{
+private:
+	int m_nAnimationID;	
+	int m_nCurrentFrameIndex;
+private:
+	int CurrentFrameIndex()
+	{
+		return m_nCurrentFrameIndex;
+	}
+}
+*/
+class WL_AnimationManager
+{
+private:
+	map<int, WL_Animation*> mapAnimation;//int从1开始
+public:
+	WL_Animation* GetAnimation(int nAnimationID)
+	{
+		if (mapAnimation.find(nAnimationID) == mapAnimation.end())
+    		return nullptr;
+    	else
+    		mapAnimation[nAnimationID];
+	}
+	WL_Animation* CreateAnimation(int nObjectID, int nTypeID)
+	{
+		WL_Animation* pAnimation = nullptr;
+		do
+		{
+			int nAnimation = -1;
+			int nSize = mapAnimation.size();
+			for(int i = 1; i <= nSize; i++) 
+			{
+				if(mapAnimation[i].m_nObjectID == nObjectID && mapAnimation[i].m_nTypeID == nTypeID)
+				{
+					pAnimation = mapAnimation[i];
+					break;
+				}
+			}
+			if(nAnimation == -1)
+			{
+				string sSql = "select AnimationID, Frame from WL_Animation where ObjectID = " + IntToString(nObjectID) + " and TypeID = " + IntToString(nTypeID);
+				m_gWL_DB->Execute(sSql);
+				vector<map<string, string>> vecResult = m_gWL_DB->GetResult();
+				if(vecResult.size() != 1)
+				{
+					pAnimation = nullptr;
+					break;
+				}
+				WL_Animation* animation=new WL_Animation(nObjectID, nTypeID);
+				mapAnimation[vecResult[0][AnimationID]] = animation;
+				vector<string> vecFrame = WL_Split(vecResult[0][Frame], ",");
+				int nSize = vecFrame.size();
+				for(int i = 0; i < nSize; i++)
+					animation->m_vecFrame.push_back(vecFrame[i]);
+			}
+		}while(flase)
+		return pAnimation;
+	}
+};
+
+class WL_Image
+{
+public:
+	string m_sFileName;
+	int m_nSrcX;
+	int m_nSrcY;
+	int m_nWidth;
+	int m_nHeight;
+}
+class WL_ImageStore
+{
+private:
+	map<int, WL_Image*> mapImage;
+public:
+	WL_Image* GetImage(int nImageId)
+	{
+		map<int, WL_Image*>::iterator iter = mapImage.find(nImageId);
+		if(iter != mapImage.end())
+		{
+			return iter->second;
+		}
+		else
+			return nullptr;
+	}
+}
+
+class WL_RanderObject
+{
+public:
+	int m_nDstX;
+	int m_nDstY;
+	float m_fAngle;
+}
+
+class WL_RanderManager 合并到scene
+{
+private:
+	map<int, WL_RanderObject*> mapRanderObject;
+public:
+	void update()
+	{
+		CCSprite* sprite = nullptr;
+		while()
+		{
+			sprite = getChildren();
+			if (mapRanderObject.find(sprite->GetTag()) == mapAnimation.end())
+	    		removeChild(sprite);
+	    	else
+	    	{
+	    		WL_Image* image = m_gWL_ImageStore->GetImage(vecRanderObject[i].m_nImageID);
+	    		sprite->setFrame(image->m_sFileName);
+	    		sprite->setPosition(CCPoint(vecRanderObject[i].m_nDstX, vecRanderObject[i].m_nDstY));
+	    	}
+		}
+	}
+	void AddImage(int nImageId, int nDstX, nDstY, fAngle = 0)
+	{
+		WL_RanderObject* pRanderObject = new WL_RanderObject();
+		pRanderObject.m_nDstX = nDstX;
+		pRanderObject.m_nDstY = nDstY;
+		pRanderObject.m_fAngle = fAngle;
+		vecRanderObject[nImageId]=pRanderObject);
+	}
+}
