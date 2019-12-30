@@ -30,91 +30,105 @@ hit-jump         wait
 出血：增加每一击伤害
 治疗
 
-class WL_FrameNode
+文件结构，以数据块形式存储，暂时定义两个数据块。
+文件开头是多个CHUNK的列表，最后一个CHUNK的ID为0，结束之后是各个CHUNK的详细内容
+数据块定义
+CHUNK
 {
-pubile:
-	virtual void update() = 0;
-protected:
+	unsigned char ID;//数据块的ID，0为空
+	int pChunk；//数据块的地址
+};
+FILE_INFO
+{
+	int width;//图片宽
+	int height;//图片高
+	unsigned char depth；//图片色深类型（0:24位真彩，每个像素占4字节，分别是rgba）
+	unsigned char store；//图片存储方式（比如索引方式，位图数据方式等）
+};
+DATA
+{
+	unsigned char r;
+	unsigned char g;
+	unsigned char b;
+	unsigned char a;
+};
 
-}
+MainScene::MainScene(void)
+{
+	WL_InputManager::m_gInputManager = new WL_InputManager();
+	WL_AnimationManager::m_gAnimationManager = new WL_AnimationManager();
+	WL_DB::m_gDB = new WL_DB("DB.db");
+	WL_ImageStore::m_gImageStore = new WL_ImageStore();
+	WL_RanderManager::m_gRanderManager = new WL_RanderManager();
 
-class scene
-{
-private:
-	//vector<Map*>;
-	//vector<Monster*>;
-	vector<Player*> m_vecPlayer;
-	//vector<Building*>;//breakable
-public:
-	scene()
-	{
-		WL_Player* player = new WL_Player();
-		m_vecPlayer.push_back(player);
-	}
-	~scene()
-	{
-		for(int i = 0;i<m_vecPlayer.size();i++)
-		{
-			delete m_vecPlayer[i];
-			m_vecPlayer[i] = nullptr;
-		}
-	}
-	update()
-	{
-		inputmanager->update()
-		//mapmanager->update()
-		for(int i = 0;i<m_vecPlayer.size();i++)
-		{
-			m_vecPlayer[i]->update();
-		}
-		m_gCollisionManager->update()
-		randermanager->update()
-	}
+	WL_Player* player = new WL_Player();
+	m_vecPlayer.push_back(player);
 }
-bool IsPointInRect(const WL_Point& pt, const WL_Rect rt)
+MainScene::~MainScene(void)
 {
-	if ((rt.left > pt.x) ||
-		(rt.right <= pt.x) ||
-		(rt.top > pt.y) ||
-		(rt.bottom <= pt.y))
+	if(WL_InputManager::m_gInputManager != NULL)
 	{
-		return false;
+		delete WL_InputManager::m_gInputManager;
+		WL_InputManager::m_gInputManager = nullptr;
+	}
+	if(WL_AnimationManager::m_gAnimationManager != NULL)
+	{
+		delete WL_AnimationManager::m_gAnimationManager;
+		WL_AnimationManager::m_gAnimationManager = nullptr;
+	}
+	if(WL_DB::m_gDB != NULL)
+	{
+		delete WL_DB::m_gDB;
+		WL_DB::m_gDB = nullptr;
+	}
+	if(WL_ImageStore::m_gImageStore != NULL)
+	{
+		delete WL_ImageStore::m_gImageStore;
+		WL_ImageStore::m_gImageStore = nullptr;
+	}
+	if(WL_RanderManager::m_gRanderManager != NULL)
+	{
+		delete WL_RanderManager::m_gRanderManager;
+		WL_RanderManager::m_gRanderManager = nullptr;
 	}
 
-	return true;
-}
-class WL_Monster
-{
-pricate:
-	WL_Animation* m_pAnimation;
-	PlayerState m_nState;
-	int m_nAnimationID;
-	int m_nCurrentFrameIndex;
-	int m_nMaxFrame;
-	int x;
-	int y;
-	float angel;
-public:
-	update()
+	for(unsigned int i = 0;i<m_vecPlayer.size();i++)
 	{
-		if(IsPointInRect(Player->GetPos(), WL_Rect(x, y, x+100, y+100) && !PointInRect(Player->GetPos(), WL_Rect(x, y, x+5, y+5))
-		{
-			x = drawline().x;
-			y = drawline().y;
-			m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Run);
-			m_nCurrentFrameIndex = 0;
-			m_nMaxFrame = m_pAnimation->GetMaxFram();
-			m_nState = Run;
-		}
-		if(IsPointInRect(Player->GetPos(), WL_Rect(x, y, x+5, y+5))
-		{
-			m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Attack);
-			m_nCurrentFrameIndex = 0;
-			m_nMaxFrame = m_pAnimation->GetMaxFram();
-			m_nState = Attack;
-		}
+		delete m_vecPlayer[i];
+		m_vecPlayer[i] = nullptr;
 	}
 }
+void MainScene::update(float dt)
+{
+	WL_InputManager::m_gInputManager->update();
+
+	for(unsigned int i = 0;i<m_vecPlayer.size();i++)
+	{
+		m_vecPlayer[i]->update();
+	}
+//	WL_CollisionManager::m_gCollisionManager->update()
+	
+	this->removeAllChildren();
+	CCSprite* sprite = nullptr;
+	WL_Image* image = nullptr;
+	std::map<int, WL_RanderObject*>::iterator iter;
+	for(iter = WL_RanderManager::m_gRanderManager->m_mapRanderObjects.begin();iter != WL_RanderManager::m_gRanderManager->m_mapRanderObjects.end();iter++)
+	{
+		image = WL_ImageStore::m_gImageStore->CreateImage(iter->first);
+		if(image == nullptr)
+			break;
+		CCLOG("%s", image->m_sFileName.c_str());
+		sprite = CCSprite::create(image->m_sFileName.c_str());
+		sprite->setPosition(CCPoint(iter->second->m_nDstX, iter->second->m_nDstY));
+		if(iter->second->m_bRotationY == true)
+		{
+			sprite->setRotationY(180);
+		}
+		this->addChild(sprite,3);
+	}
+}
+
+
 class WL_Player
 {
 pricate:
@@ -226,147 +240,7 @@ public:
 	}
 }
 
-common.cpp
-#include <string>
-using namespace std;
-vector<string> WL_Split(const string& str, const string& delims)
-{
-    vector<string> ret;
 
-    size_t start, pos;
-    start = 0;
-    do 
-    {
-        pos = str.find_first_of(delims, start);
-        if (pos == start)
-        {
-            start = pos + 1;
-        }
-        else if (pos == String::npos)
-        {
-            // Copy the rest of the string
-            ret.push_back( str.substr(start) );
-            break;
-        }
-        else
-        {
-            // Copy up to delimiter
-            ret.push_back( str.substr(start, pos - start) );
-            start = pos + 1;
-        }
-        // parse up to next real data
-        start = str.find_first_not_of(delims, start);
-
-    } while (pos != String::npos);
-
-    return ret;
-}
-
-int StringToInt(string val)
-{
-    return atoi(val.c_str());
-}
-
-string IntToString(int val)
-{
-	return to_string(val);
-}
-
-WL_DB.h
-#pragma once
-#include <string>
-#include <map>
-#include <vector>
-#include <sqlite3.h>
-using namespace std;
-class WL_DB
-{
-privete:
-	sqlite3* m_pDB;
-	string m_sErrMsg;
-	static vector<map<string, string>> m_vecResult;
-	string m_sFileName;
-
-	static int callback(void *NotUsed, int argc, char **argv, char **azColName);
-public:
-	WL_DB(const string sFileName);
-	virtual ~WL_DB();
-	void OpenDB(const string sFileName);
-	void Execute(const string sSql);
-	void CloseDB();
-	string GetError();
-	vector<map<string, string>> GetResult();
-	int GetRecordCount();
-}
-WL_DB.cpp
-#include "WL_DB.h"
-vector<map<string, string>> WL_DB::m_vecResult;
-int WL_DB::callback(void *NotUsed, int argc, char **argv, char **azColName)
-{
-	map<string, string> map;
-	for(i=0; i<argc; i++)
-	{
-		map[azColName[i]] = argv[i] ? argv[i] : "NULL";
-	}
-	m_vecResult.push_back(map);
-	return 0;
-}
-
-WL_DB::WL_DB(const string sFileName)
-{
-	OpenDB(sFileName);
-}
-
-WL_DB::~WL_DB()
-{
-	CloseDB();
-}
-
-void WL_DB::OpenDB(const string sFileName)
-{
-	if(sqlite3_open(sFileName.c_str(), &m_pDB))
-	{
-		m_sErrMsg = sqlite3_errmsg(m_pDB);
-		CloseDB();
-		return;
-	}
-}
-
-void WL_DB::Execute(const string sSql)
-{
-	char* zErrMsg = nullptr;
-	if(m_pDB == nullptr)
-	{
-		m_sErrMsg =  "m_pDB is nullptr";
-		return;
-	}
-	if(sqlite3_exec(m_pDB, sSql.c_str(), callback, 0, &zErrMsg))
-	{
-		m_sErrMsg = zErrMsg;
-		sqlite3_free(zErrMsg);
-	}
-}
-
-void WL_DB::CloseDB()
-{
-	sqlite3_close(m_pDB);
-	m_pDB = null;
-}
-
-string WL_DB::GetError()
-{
-	return m_sErrMsg;
-}
-
-vector<map<string, string>> WL_DB::GetResult()
-{
-	return m_mapResult;
-}
-
-int WL_DB::GetRecordCount()
-{
-	return m_vecResult.size();;
-}
 tabledata file :.td
 ObjectID:所有类型都是object，每个object都有唯一UUID，运行后都有一个ID，同类型的object的UUID相同，但是id不同。包括人物，怪物，物品。
 WL_UI
@@ -382,36 +256,6 @@ ItemID
 WL_Monster
 WL_Object
 WL_Skill
-BEGIN TRANSACTION;
-CREATE TABLE WL_Animation (AnimationID TEXT, ObjectID TEXT, Type TEXT, Frame TEXT, Describe TEXT);
-INSERT INTO WL_Animation VALUES(1,1,'Idel','1,2,3,4,5','Player Idle');
-INSERT INTO WL_Animation VALUES(2,1,'Run','5,6,7,8,9','Player Run');
-INSERT INTO WL_Animation VALUES(3,1,'Attack','10,11,12,13,14','Player Attack');
-INSERT INTO WL_Animation VALUES(4,1,'Jump','15,16,17,18,19','Player Jump');
-CREATE TABLE WL_Image (ImageID TEXT, FileName TEXT, FileSubName TEXT, SrcX TEXT, SrcY TEXT, Width TEXT, Height TEXT);
-INSERT INTO WL_Image VALUES(1,'Idle\1.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(2,'Idle\2.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(3,'Idle\3.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(4,'Idle\4.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(5,'Run\1.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(6,'Run\2.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(7,'Run\3.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(8,'Run\4.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(9,'Attack\1.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(10,'Attack\2.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(11,'Attack\3.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(12,'Attack\4.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(13,'Jump\1.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(14,'Jump\2.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(15,'Jump\3.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(16,'Jump\4.png',NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(17,NULL,NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(18,NULL,NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(19,NULL,NULL,0,0,NULL,NULL);
-INSERT INTO WL_Image VALUES(20,NULL,NULL,0,0,NULL,NULL);
-CREATE TABLE WL_Role (RoleID TEXT, MaxHP TEXT, MaxMP TEXT, Describe TEXT);
-INSERT INTO WL_Role VALUES(1,100,100,'Player');
-COMMIT;
 
 class WL_Animation
 {
@@ -425,225 +269,183 @@ public:
 		m_vecFrame[index];
 	}
 }
-/*
-class WL_AnimationState
+class WL_Animation
 {
-private:
-	int m_nAnimationID;	
-	int m_nCurrentFrameIndex;
-private:
-	int CurrentFrameIndex()
-	{
-		return m_nCurrentFrameIndex;
-	}
-}
-*/
-class WL_AnimationManager
-{
-private:
-	map<int, WL_Animation*> mapAnimation;//int从1开始
 public:
-	WL_Animation* GetAnimation(int nAnimationID)
+	int m_nObjectID;//对象在数据库里的UUID
+	int m_nTypeID;//对象的动画类型，如跑，跳，攻击
+	vector<int> m_vecFrame;//动画帧图片列表，保存的是图片ID
+	WL_Animation(int nObjectID, int nTypeID)
 	{
-		if (mapAnimation.find(nAnimationID) == mapAnimation.end())
-    		return nullptr;
-    	else
-    		mapAnimation[nAnimationID];
+		m_nObjectID = nObjectID;
+		m_nTypeID = nTypeID;
 	}
-	WL_Animation* CreateAnimation(int nObjectID, int nTypeID)
+	int GetMaxFrame()
 	{
-		WL_Animation* pAnimation = nullptr;
-		do
-		{
-			int nAnimation = -1;
-			int nSize = mapAnimation.size();
-			for(int i = 1; i <= nSize; i++) 
-			{
-				if(mapAnimation[i].m_nObjectID == nObjectID && mapAnimation[i].m_nTypeID == nTypeID)
-				{
-					pAnimation = mapAnimation[i];
-					break;
-				}
-			}
-			if(nAnimation == -1)
-			{
-				string sSql = "select AnimationID, Frame from WL_Animation where ObjectID = " + IntToString(nObjectID) + " and TypeID = " + IntToString(nTypeID);
-				m_gWL_DB->Execute(sSql);
-				vector<map<string, string>> vecResult = m_gWL_DB->GetResult();
-				if(vecResult.size() != 1)
-				{
-					pAnimation = nullptr;
-					break;
-				}
-				WL_Animation* animation=new WL_Animation(nObjectID, nTypeID);
-				mapAnimation[vecResult[0][AnimationID]] = animation;
-				vector<string> vecFrame = WL_Split(vecResult[0][Frame], ",");
-				int nSize = vecFrame.size();
-				for(int i = 0; i < nSize; i++)
-					animation->m_vecFrame.push_back(vecFrame[i]);
-			}
-		}while(flase)
-		return pAnimation;
+		return m_vecFrame.size();
 	}
 };
 
+class WL_AnimationManager
+{
+private:
+	map<int, WL_Animation*> m_mapAnimations;
+public:
+	static WL_AnimationManager* m_gAnimationManager;//int从1开始
+
+	WL_AnimationManager(void);
+	~WL_AnimationManager(void);
+	WL_Animation* GetAnimation(int nAnimationID);
+	WL_Animation* CreateAnimation(int nObjectID, int nTypeID);
+};
+WL_Animation* WL_AnimationManager::GetAnimation(int nAnimationID)
+{
+	if (m_mapAnimations.find(nAnimationID) == m_mapAnimations.end())
+		return nullptr;
+	else
+		return m_mapAnimations[nAnimationID];
+}
+
+WL_Animation* WL_AnimationManager::CreateAnimation(int nObjectID, int nTypeID)
+{
+	WL_Animation* pAnimation = nullptr;
+	do
+	{
+		//查找动画是否已经存在
+		map<int, WL_Animation*>::iterator iter;
+		for(iter = m_mapAnimations.begin();iter != m_mapAnimations.end();iter++) 
+		{
+			if(iter->second->m_nObjectID == nObjectID && iter->second->m_nTypeID == nTypeID)
+			{
+				return iter->second;
+			}
+		}
+		//创建动画
+		string sSql = "select AnimationID, Frame from WL_Animation where ObjectID = " + IntToString(nObjectID) + " and Type = " + IntToString(nTypeID);
+		WL_DB::m_gDB->Execute(sSql);
+		vector<map<string, string>> vecResult = WL_DB::m_gDB->GetResult();
+		if(vecResult.size() != 1)//理论上只有一个动画
+		{
+			pAnimation = nullptr;
+			break;
+		}
+		pAnimation=new WL_Animation(nObjectID, nTypeID);
+		//m_mapAnimations[vecResult[0]["AnimationID"]] = pAnimation;
+		int n = StringToInt(vecResult[0]["AnimationID"]);
+		m_mapAnimations[n] = pAnimation;
+		vector<string> vecFrame = WL_Split(vecResult[0]["Frame"], ",");//帧以 第1帧图片ID，第2帧图片ID，第3帧图片ID 的形式保存
+		int nSize = vecFrame.size();
+		for(int i = 0; i < nSize; i++)
+			pAnimation->m_vecFrame.push_back(StringToInt(vecFrame[i]));
+	}while(false);
+	return pAnimation;
+}
 class WL_Image
 {
 public:
 	string m_sFileName;
-	int m_nSrcX;
+	int m_nSrcX;//该图片在图片文件中的坐标
 	int m_nSrcY;
 	int m_nWidth;
 	int m_nHeight;
-}
+};
+
 class WL_ImageStore
 {
 private:
-	map<int, WL_Image*> mapImage;
+	map<int, WL_Image*> m_mapImages;
+	
 public:
-	WL_Image* GetImage(int nImageId)
+	static WL_ImageStore* m_gImageStore;
+
+	WL_ImageStore(void);
+	~WL_ImageStore(void);
+	WL_Image* GetImage(int nImageId);
+	WL_Image* CreateImage(int nImageId);
+};
+WL_Image* WL_ImageStore::GetImage(int nImageId)
+{
+	map<int, WL_Image*>::iterator iter = m_mapImages.find(nImageId);
+	if(iter != m_mapImages.end())
 	{
-		map<int, WL_Image*>::iterator iter = mapImage.find(nImageId);
-		if(iter != mapImage.end())
-		{
-			return iter->second;
-		}
-		else
-			return nullptr;
+		return iter->second;
 	}
+	else
+		return nullptr;
 }
 
+WL_Image* WL_ImageStore::CreateImage(int nImageId)
+{
+	WL_Image* pImage = nullptr;
+	do
+	{
+		//²éÕÒÍ¼Æ¬ÊÇ·ñÒÑ¾­´æÔÚ
+		pImage = GetImage(nImageId);
+		if(pImage != nullptr)return pImage;
+		//´´½¨Í¼Æ¬
+		string sSql = "select FileName, SrcX, SrcY, Width, Height from WL_Image where ImageID = " + IntToString(nImageId);
+		WL_DB::m_gDB->Execute(sSql);
+		vector<map<string, string>> vecResult = WL_DB::m_gDB->GetResult();
+		if(vecResult.size() != 1)//ÀíÂÛÉÏÖ»ÓÐÒ»¸ö¶¯»­
+		{
+			pImage = nullptr;
+			break;
+		}
+		pImage=new WL_Image();
+		pImage->m_sFileName = vecResult[0]["FileName"];
+		pImage->m_nSrcX = StringToInt(vecResult[0]["SrcX"]);//¸ÃÍ¼Æ¬ÔÚÍ¼Æ¬ÎÄ¼þÖÐµÄ×ø±ê
+		pImage->m_nSrcY = StringToInt(vecResult[0]["SrcY"]);
+		pImage->m_nWidth = StringToInt(vecResult[0]["Width"]);
+		pImage->m_nHeight = StringToInt(vecResult[0]["Height"]);
+
+		m_mapImages[nImageId] = pImage;
+	}while(false);
+	return pImage;
+}
 class WL_RanderObject
 {
 public:
-	int m_nDstX;
+	int m_nDstX;//屏幕坐标
 	int m_nDstY;
-	float m_fAngle;
-}
-
-class WL_RanderManager 合并到scene
-{
-private:
-	map<int, WL_RanderObject*> mapRanderObject;
-public:
-	void update()
-	{
-		CCSprite* sprite = nullptr;
-		while()
-		{
-			sprite = getChildren();
-			if (mapRanderObject.find(sprite->GetTag()) == mapAnimation.end())
-	    		removeChild(sprite);
-	    	else
-	    	{
-	    		WL_Image* image = m_gWL_ImageStore->GetImage(vecRanderObject[i].m_nImageID);
-	    		sprite->setFrame(image->m_sFileName);
-	    		sprite->setPosition(CCPoint(vecRanderObject[i].m_nDstX, vecRanderObject[i].m_nDstY));
-	    	}
-		}
-	}
-	void AddImage(int nImageId, int nDstX, nDstY, fAngle = 0)
-	{
-		WL_RanderObject* pRanderObject = new WL_RanderObject();
-		pRanderObject.m_nDstX = nDstX;
-		pRanderObject.m_nDstY = nDstY;
-		pRanderObject.m_fAngle = fAngle;
-		vecRanderObject[nImageId]=pRanderObject);
-	}
-}
-WL_CollisionManager.h
-WL_CollisionManager : public b2ContactListener
-{
-private:
-	b2World *m_pWorld;
-public:
-	WL_CollisionManager();
-	~WL_CollisionManager();
-	void init();
-	virtual void BeginContact(b2Contact* contact);
-	virtual void EndContact(b2Contact* contact);
-	void AddObject(WL_Object* pObject);
-	void update();
+	float m_fAngle;//旋转角度
+	bool m_bRotationX;//是否沿着X反转
+	bool m_bRotationY;//是否沿着Y反转
 };
-WL_CollisionManager.cpp
-WL_CollisionManager::WL_CollisionManager(b2Contact* contact)
-{
-	init();
-}
 
-void WL_CollisionManager::init()
+class WL_RanderManager
 {
-	b2Vec2 gravity;
-	gravity.Set(0.0f, 0.0f);
-	m_pWorld = new b2World(gravity);
-	m_pWorld->SetAllowSleeping(true);
-	b2BodyDef groundBodyDef;
-	groundBodyDef.position.Set(0, 0);
-	b2Body *groundBody = _world->CreateBody(&groundBodyDef);
-	b2EdgeShape groundBox;
-
-	//bottom
-	groundBox.Set(b2Vec2(VisibleRect::leftBottom().x / PTM_RATIO, VisibleRect::leftBottom().y / PTM_RATIO), b2Vec2(VisibleRect::rightBottom().x / PTM_RATIO, VisibleRect::rightBottom().y / PTM_RATIO));
-	groundBody->CreateFixture(&groundBox, 0);
-	//right
-	//top
-	//left
-	m_pWorld->SetContactListener(this);
-}
-
-void WL_CollisionManager::BeginContact(b2Contact* contact)
-{
-	b2Body *bodyA = contact->GetFixtureA()->GetBody();
-	b2Body *bodyB = contact->GetFixtureB()->GetBody();
-	WL_Object* pObjectA = nullptr;
-	WL_Object* pObjectB = nullptr;
-	if(bodyA->GetUserData() != NULL && bodyB->GetUserData() != NULL) 
-	{
-		pObjectA = (WL_Object*)bodyA->GetUserData();
-		pObjectB = (WL_Object*)bodyB->GetUserData();
-		if(pObjectA->GetCollisionType() == pObjectB->GetType())
-		{
-			pObjectB->SetHp(pObjectB->GetHp - (pObjectA->GetAttack() * pObjectB->GetDefence() / MAX_DEFENCE));
-		}
-		else if(pObjectB->GetCollisionType() == pObjectA->GetType())
-		{
-			pObjectA->SetHp(pObjectA->GetHp - (pObjectB->GetAttack() * pObjectA->GetDefence() / MAX_DEFENCE));
-		}
-	}
-}
-
-void WL_CollisionManager::EndContact(b2Contact* contact)
-{
+private:
 	
-}
+	
+public:
+	std::map<int, WL_RanderObject*> m_mapRanderObjects;
+	static WL_RanderManager* m_gRanderManager;
 
-void WL_CollisionManager::AddObject(WL_Object* pObject)
+	WL_RanderManager(void);
+	~WL_RanderManager(void);
+	WL_RanderObject* GetRanderObject(int nImageId);
+	void AddRanderObject(int nDstX, int nDstY, int nImageId, float fAngle = 0, bool bRotationX = false, bool bRotationY = false);
+};
+WL_RanderObject* WL_RanderManager::GetRanderObject(int nImageId)
 {
-	b2BodyDef bodyDef;
-	bodyDef.type = b2_dynamicBody;
-	bodyDef.position.Set(pObject->getPositionX() / PTM_RATIO, pObject->getPositionY() / PTM_RATIO);
-	bodyDef.userData = pObject;
-	b2Body *body = m_pWorld->CreateBody(&bodyDef);
-
-	int num = 4;
-	b2Vec2 verts[] =
+	std::map<int, WL_RanderObject*>::iterator iter = m_mapRanderObjects.find(nImageId);
+	if(iter != m_mapRanderObjects.end())
 	{
-		b2Vec2(pObject->Left() / PTM_RATIO, pObject->Top() / PTM_RATIO),
-		b2Vec2(pObject->Right() / PTM_RATIO, pObject->Top() / PTM_RATIO),
-		b2Vec2(pObject->Right() / PTM_RATIO, pObject->Buttom() / PTM_RATIO),
-		b2Vec2(pObject->Left() / PTM_RATIO, pObject->Buttom() / PTM_RATIO)
+		return iter->second;
 	}
-	b2FixtureDef fixtureDef;
-	b2PolygonShape spriteShape;
-	spriteShape.Set(verts, num);
-	fixtureDef.shape = &spriteShape;
-	fixtureDef.density = 10.0f;
-	fixtureDef.isSensor = true;
-	body->CreateFixture(&fixtureDef);
+	else
+		return nullptr;
 }
-void WL_CollisionManager::update()
+
+void WL_RanderManager::AddRanderObject(int nDstX, int nDstY, int nImageId, float fAngle, bool bRotationX, bool bRotationY)
 {
-	m_pWorld->Step(dt, 10, 10);
+	WL_RanderObject* pRanderObject = new WL_RanderObject();
+	pRanderObject->m_nDstX = nDstX;
+	pRanderObject->m_nDstY = nDstY;
+	pRanderObject->m_fAngle = fAngle;
+	pRanderObject->m_bRotationX = bRotationX;
+	pRanderObject->m_bRotationY = bRotationY;
+	m_mapRanderObjects[nImageId]=pRanderObject;
 }
 script
 mineskill.py
