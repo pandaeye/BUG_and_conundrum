@@ -1,3 +1,4 @@
+Idle
 move
 jump_start
 jump_air
@@ -18,10 +19,17 @@ hit-jump         wait
 
 武器
 刀，散弹枪，炮
-道具
+技能与道具融合:
 地雷（cd：1s），环绕守护刀（可发射），
-技能
 侧移
+反弹
+无敌
+霸体
+弹反
+毒：减速
+出血：增加每一击伤害
+治疗
+
 class WL_FrameNode
 {
 pubile:
@@ -110,17 +118,20 @@ public:
 class WL_Player
 {
 pricate:
-	WL_Animation* m_pAnimation;
-//	WL_AnimationState* m_pAction;
+	vector<int> m_vecCollisionObject;//碰撞时需要处理的对象ID
+	const int m_nUUID;
+	int m_nID;
 	PlayerState m_nState;
-	int m_nAnimationID;
-	int m_nCurrentFrameIndex;
-	int m_nMaxFrame;
+	WL_Animation* m_pAnimation;//每个animation在内存中只有一个实体，为了节省内存
+	WL_Rander* m_pRander;//决定animation渲染方式，比如屏幕位置，旋转角度，是否反转等
+	WL_Item* m_pWeapon;
+	WL_Animation* m_pWeaponAnimation;
+//	int m_nCurrentFrameIndex;
+//	int m_nMaxFrame;
 	int x;
 	int y;
-	float angel;
 public:
-	WL_Player()
+	WL_Player():m_nRoleIDInDB(1)
 	{
 		m_nRoleIDInDB = 1;
 //		m_pAction = new m_pAction(WL_AnimationState);
@@ -136,23 +147,30 @@ public:
 	}
 	update()
 	{
-		if(m_nCurrentFrameIndex>=m_nMaxFrame)
+		//Idle
+		if(WL_Animation->IsFinish())
 		{
-			m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Stand);
-			m_nCurrentFrameIndex = 0;
-			m_nMaxFrame = m_pAnimation->GetMaxFram();
-			m_nState = Stand;
+			WL_Animation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Idle);
+			m_nState = Idle;
+			if(m_pWeapon != nullptr)
+			{
+				m_pWeaponAnimation = m_gAnimationManager->CreateAnimation(m_pWeapon->GetUUID(), Idle);
+				m_gCollisionManager->AddObject(m_pWeapon->GetID());
+			}
 		}
 		//input
+		bool bRalate = false;
 		if(m_gInputManeger->IsPressed(KC_A))
 		{
-			x--;
+			x -= 2;
 			if(m_nState != JumpAir && m_nState != Jump && m_nState != Run)
 			{
-				m_pAnimation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Run);
-				m_nCurrentFrameIndex = 0;
-				m_nMaxFrame = m_pAnimation->GetMaxFram();
+				WL_Animation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Run);
 				m_nState = Run;
+				if(m_pWeapon != nullptr)
+				{
+					m_pWeaponAnimation = m_gAnimationManager->CreateAnimation(m_pWeapon->GetUUID(), Run);
+				}
 			}
 		}
 		if(m_gInputManeger->IsPressed(KC_D))
@@ -165,6 +183,7 @@ public:
 				m_nMaxFrame = m_pAnimation->GetMaxFram();
 				m_nState = Run;
 			}
+			bRalate = true;
 		}
 		if(m_gInputManeger->IsPressed(KC_M))
 		{
@@ -191,7 +210,7 @@ public:
 		//
 		if(m_nState == Jump)
 		{
-			if(m_nCurrentFrameIndex==3)
+			if(m_pRander->GetRanderFrameIndex()==3)
 			{
 				m_nState = JumpAir;
 			}
@@ -200,7 +219,8 @@ public:
 		//
 		if(m_pAnimation != nullptr)
 		{
-			m_gRanderManeger->AddImage(x, y, m_pAnimation->GetFrame(m_nCurrentFrameIndex);
+			m_pRander = m_gRanderManeger->CreateRander(x, y, m_pAnimation->GetFrame(m_nCurrentFrameIndex);
+			m_pRander->Ralate(bRalote);
 		}
 		m_nCurrentFrameIndex++;
 	}
@@ -348,20 +368,51 @@ int WL_DB::GetRecordCount()
 	return m_vecResult.size();;
 }
 tabledata file :.td
+ObjectID:所有类型都是object，每个object都有唯一UUID，运行后都有一个ID，同类型的object的UUID相同，但是id不同。包括人物，怪物，物品。
 WL_UI
 UIID(ObjectID) Image describe
-WL_Role:public//player、monster
-RoleID(ObjectID) MaxHp MaxMp Action(1,2,3) Image describe
 WL_Skill:public
-SkillID Attack
-WL_Item:
-ItemID Attack effect 
-WL_Animation
-AnimationID ObjectID TypeID Frame(1,2,3) describe
-WL_Image
-ImageID FileName FileSubID SrcX SrcY DstX DstY angle width height
-WL_Map
-MapID Monster(RoleID:1,2,3) item(1,2,3) building(1,2,3)
+SkillID name Attack CD TimeToLive
+WL_Weapon:
+WeaponID Attack Defence Effect EffectValue
+WL_Armour
+ArmourID Defence
+WL_Item
+ItemID 
+WL_Monster
+WL_Object
+WL_Skill
+BEGIN TRANSACTION;
+CREATE TABLE WL_Animation (AnimationID TEXT, ObjectID TEXT, Type TEXT, Frame TEXT, Describe TEXT);
+INSERT INTO WL_Animation VALUES(1,1,'Idel','1,2,3,4,5','Player Idle');
+INSERT INTO WL_Animation VALUES(2,1,'Run','5,6,7,8,9','Player Run');
+INSERT INTO WL_Animation VALUES(3,1,'Attack','10,11,12,13,14','Player Attack');
+INSERT INTO WL_Animation VALUES(4,1,'Jump','15,16,17,18,19','Player Jump');
+CREATE TABLE WL_Image (ImageID TEXT, FileName TEXT, FileSubName TEXT, SrcX TEXT, SrcY TEXT, Width TEXT, Height TEXT);
+INSERT INTO WL_Image VALUES(1,'Idle\1.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(2,'Idle\2.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(3,'Idle\3.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(4,'Idle\4.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(5,'Run\1.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(6,'Run\2.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(7,'Run\3.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(8,'Run\4.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(9,'Attack\1.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(10,'Attack\2.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(11,'Attack\3.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(12,'Attack\4.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(13,'Jump\1.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(14,'Jump\2.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(15,'Jump\3.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(16,'Jump\4.png',NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(17,NULL,NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(18,NULL,NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(19,NULL,NULL,0,0,NULL,NULL);
+INSERT INTO WL_Image VALUES(20,NULL,NULL,0,0,NULL,NULL);
+CREATE TABLE WL_Role (RoleID TEXT, MaxHP TEXT, MaxMP TEXT, Describe TEXT);
+INSERT INTO WL_Role VALUES(1,100,100,'Player');
+COMMIT;
+
 class WL_Animation
 {
 private:
@@ -500,3 +551,134 @@ public:
 		vecRanderObject[nImageId]=pRanderObject);
 	}
 }
+WL_CollisionManager.h
+WL_CollisionManager : public b2ContactListener
+{
+private:
+	b2World *m_pWorld;
+public:
+	WL_CollisionManager();
+	~WL_CollisionManager();
+	void init();
+	virtual void BeginContact(b2Contact* contact);
+	virtual void EndContact(b2Contact* contact);
+	void AddObject(WL_Object* pObject);
+	void update();
+};
+WL_CollisionManager.cpp
+WL_CollisionManager::WL_CollisionManager(b2Contact* contact)
+{
+	init();
+}
+
+void WL_CollisionManager::init()
+{
+	b2Vec2 gravity;
+	gravity.Set(0.0f, 0.0f);
+	m_pWorld = new b2World(gravity);
+	m_pWorld->SetAllowSleeping(true);
+	b2BodyDef groundBodyDef;
+	groundBodyDef.position.Set(0, 0);
+	b2Body *groundBody = _world->CreateBody(&groundBodyDef);
+	b2EdgeShape groundBox;
+
+	//bottom
+	groundBox.Set(b2Vec2(VisibleRect::leftBottom().x / PTM_RATIO, VisibleRect::leftBottom().y / PTM_RATIO), b2Vec2(VisibleRect::rightBottom().x / PTM_RATIO, VisibleRect::rightBottom().y / PTM_RATIO));
+	groundBody->CreateFixture(&groundBox, 0);
+	//right
+	//top
+	//left
+	m_pWorld->SetContactListener(this);
+}
+
+void WL_CollisionManager::BeginContact(b2Contact* contact)
+{
+	b2Body *bodyA = contact->GetFixtureA()->GetBody();
+	b2Body *bodyB = contact->GetFixtureB()->GetBody();
+	WL_Object* pObjectA = nullptr;
+	WL_Object* pObjectB = nullptr;
+	if(bodyA->GetUserData() != NULL && bodyB->GetUserData() != NULL) 
+	{
+		pObjectA = (WL_Object*)bodyA->GetUserData();
+		pObjectB = (WL_Object*)bodyB->GetUserData();
+		if(pObjectA->GetCollisionType() == pObjectB->GetType())
+		{
+			pObjectB->SetHp(pObjectB->GetHp - (pObjectA->GetAttack() * pObjectB->GetDefence() / MAX_DEFENCE));
+		}
+		else if(pObjectB->GetCollisionType() == pObjectA->GetType())
+		{
+			pObjectA->SetHp(pObjectA->GetHp - (pObjectB->GetAttack() * pObjectA->GetDefence() / MAX_DEFENCE));
+		}
+	}
+}
+
+void WL_CollisionManager::EndContact(b2Contact* contact)
+{
+	
+}
+
+void WL_CollisionManager::AddObject(WL_Object* pObject)
+{
+	b2BodyDef bodyDef;
+	bodyDef.type = b2_dynamicBody;
+	bodyDef.position.Set(pObject->getPositionX() / PTM_RATIO, pObject->getPositionY() / PTM_RATIO);
+	bodyDef.userData = pObject;
+	b2Body *body = m_pWorld->CreateBody(&bodyDef);
+
+	int num = 4;
+	b2Vec2 verts[] =
+	{
+		b2Vec2(pObject->Left() / PTM_RATIO, pObject->Top() / PTM_RATIO),
+		b2Vec2(pObject->Right() / PTM_RATIO, pObject->Top() / PTM_RATIO),
+		b2Vec2(pObject->Right() / PTM_RATIO, pObject->Buttom() / PTM_RATIO),
+		b2Vec2(pObject->Left() / PTM_RATIO, pObject->Buttom() / PTM_RATIO)
+	}
+	b2FixtureDef fixtureDef;
+	b2PolygonShape spriteShape;
+	spriteShape.Set(verts, num);
+	fixtureDef.shape = &spriteShape;
+	fixtureDef.density = 10.0f;
+	fixtureDef.isSensor = true;
+	body->CreateFixture(&fixtureDef);
+}
+void WL_CollisionManager::update()
+{
+	m_pWorld->Step(dt, 10, 10);
+}
+script
+mineskill.py
+def begin():
+//	mine = CreateObject("mine");
+	mine->SetPosition(player1.x, player1.y, 0.1/*z value*/);
+	mine->SetAnimation("Idle");
+	mine->SetCollision(Points[4]);
+	mine->AddCollisionObject(IDs[]);
+def end():
+	nodo
+mineObject.py
+def collision(objs):
+	DeleteObject("mine");
+	boom = CreateObject("boom");
+	boom->SetPosition(item.x, item.y, 0.1/*z value*/);
+//	fire = CreateObject("fire");
+//	SetPosition(fire, this.x, this.y);
+	DeleteObject("boom", delay);
+	foreach obj in objs
+		SaveData(obj, "boom");
+fireObject.py
+def collision(objs):
+	booms = LoadData("boom");
+	foreach obj in objs
+		if obj is not in booms:
+			SetCharacter(obj, HP, GetCharacter(obj, HP) - 100);
+
+FireLineSkill.py
+angle = target.x/player1.x;
+nFrame = 0;
+def begin():
+	CreateObject("FireLine", player1.x, player1.y, angle, "FireLine", 0.1);
+def runing():
+	ScaleObject("FireLine", 0.05/*x*/, 1/*Y*/);
+def end():
+	nodo
+
