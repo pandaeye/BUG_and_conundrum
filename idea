@@ -119,8 +119,9 @@ void MainScene::update(float dt)
 		animation->addSpriteFrameWithFileName("catBody2-4.png");
 		animation->addSpriteFrameWithFileName("catBody3.png");
 		animation->addSpriteFrameWithFileName("catBody2-4.png");
-		Action* action = mainsprite->runAction((CCAnimate::create(animation)));
+		mainsprite->runAction((CCAnimate::create(animation)));
 	}
+	/*
 	this->removeAllChildren();
 	CCSprite* sprite = nullptr;
 	WL_Image* image = nullptr;
@@ -139,6 +140,7 @@ void MainScene::update(float dt)
 		}
 		this->addChild(sprite,3);
 	}
+	*/
 }
 
 
@@ -150,16 +152,17 @@ pricate:
 	int m_nID;
 	PlayerState m_nState;
 	Animate* m_pPlayerAnimate;
-	WL_Item* m_pWeapon;
+//	WL_Item* m_pWeapon;
 	Animate* m_pWeaponAnimate;
+	CCSprite *m_pPlayer;
 	int x;
 	int y;
 public:
-	WL_Player():m_nRoleIDInDB(1)
+	WL_Player(Scene* pScene):m_nUUID(1)
 	{
-		m_nUUID = 1;
-		x = 500;
-		y = 500;
+		m_pPlayer=CCSprite::create();
+		m_pPlayer->setPosition(CCPoint(500, 500));
+		pScene->addChild(m_pPlayer, 3);
 	}
 	~WL_Plyer()
 	{
@@ -187,32 +190,34 @@ public:
 		}
 		return CCAnimate::create(animation)));
 	}
-	update(this)
+	update(Scene* pScene)
 	{
 		//Idle
 		if(m_pPlayerAnimate->isDone())
 		{
 			m_pPlayerAnimate = WL_AnimationStore->CreateAnimate(m_nUUID, Idle);
 			m_nState = Idle;
-			if(m_pWeapon != nullptr)
-			{
-				m_pWeaponAnimation = WL_AnimationStore->CreateAnimate(m_pWeapon->GetUUID(), Idle);
-				m_gCollisionManager->AddObject(m_pWeapon->GetID());
-			}
+//			if(m_pWeapon != nullptr)
+//			{
+//				m_pWeaponAnimation = WL_AnimationStore->CreateAnimate(m_pWeapon->GetUUID(), Idle);
+//				m_gCollisionManager->AddObject(m_pWeapon->GetID());
+//			}
+			m_pPlayer->runAction(m_pPlayerAnimate);
 		}
 		//input
-		bool bRalate = false;
 		if(m_gInputManeger->IsPressed(KC_A))
 		{
 			x -= 2;
 			if(m_nState != JumpAir && m_nState != Jump && m_nState != Run)
 			{
+				m_pPlayer->stopAction(m_pPlayerAnimate);
 				WL_Animation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Run);
 				m_nState = Run;
 				if(m_pWeapon != nullptr)
 				{
 					m_pWeaponAnimation = m_gAnimationManager->CreateAnimation(m_pWeapon->GetUUID(), Run);
 				}
+				m_pPlayer->runAction(m_pPlayerAnimate);
 			}
 		}
 		if(m_gInputManeger->IsPressed(KC_D))
@@ -252,19 +257,19 @@ public:
 		//
 		if(m_nState == Jump)
 		{
-			if(m_pRander->GetRanderFrameIndex()==3)
+			if(m_pPlayerAnimate->getCurrentFrameIndex() == 3)
 			{
 				m_nState = JumpAir;
 			}
 		}
 
 		//
-		if(m_pAnimation != nullptr)
-		{
-			m_pRander = m_gRanderManeger->CreateRander(x, y, m_pAnimation->GetFrame(m_nCurrentFrameIndex);
-			m_pRander->Ralate(bRalote);
-		}
-		m_nCurrentFrameIndex++;
+//		if(m_pPlayerAnimate != nullptr)
+//		{
+//			m_pRander = m_gRanderManeger->CreateRander(x, y, m_pAnimation->GetFrame(m_nCurrentFrameIndex);
+//			m_pRander->Ralate(bRalote);
+//		}
+//		m_nCurrentFrameIndex++;
 	}
 }
 
