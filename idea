@@ -53,6 +53,8 @@ DATA
 	unsigned char a;
 };
 
+std::map<int, WL_Rander*> m_mapRanderAnimations;
+
 MainScene::MainScene(void)
 {
 	WL_InputManager::m_gInputManager = new WL_InputManager();
@@ -104,10 +106,21 @@ void MainScene::update(float dt)
 
 	for(unsigned int i = 0;i<m_vecPlayer.size();i++)
 	{
-		m_vecPlayer[i]->update();
+		m_vecPlayer[i]->update(this);
 	}
 //	WL_CollisionManager::m_gCollisionManager->update()
 	
+	std::map<int, WL_Rander*>::iterator iter;
+	for(iter=m_mapRanderAnimation.begin();iter=m_mapRanderAnimation.end();iter++)
+	{
+		CCSprite *mainsprite=CCSprite::create("catBody1.png");
+		CCAnimation *animation=CCAnimation::create();
+		animation->addSpriteFrameWithFileName("catBody1.png");
+		animation->addSpriteFrameWithFileName("catBody2-4.png");
+		animation->addSpriteFrameWithFileName("catBody3.png");
+		animation->addSpriteFrameWithFileName("catBody2-4.png");
+		Action* action = mainsprite->runAction((CCAnimate::create(animation)));
+	}
 	this->removeAllChildren();
 	CCSprite* sprite = nullptr;
 	WL_Image* image = nullptr;
@@ -136,21 +149,15 @@ pricate:
 	const int m_nUUID;
 	int m_nID;
 	PlayerState m_nState;
-	WL_Animation* m_pAnimation;//每个animation在内存中只有一个实体，为了节省内存
-	WL_Rander* m_pRander;//决定animation渲染方式，比如屏幕位置，旋转角度，是否反转等
+	Animate* m_pPlayerAnimate;
 	WL_Item* m_pWeapon;
-	WL_Animation* m_pWeaponAnimation;
-//	int m_nCurrentFrameIndex;
-//	int m_nMaxFrame;
+	Animate* m_pWeaponAnimate;
 	int x;
 	int y;
 public:
 	WL_Player():m_nRoleIDInDB(1)
 	{
-		m_nRoleIDInDB = 1;
-//		m_pAction = new m_pAction(WL_AnimationState);
-		m_nCurrentFrameIndex = 0;
-		m_nMaxFrame = 0;
+		m_nUUID = 1;
 		x = 500;
 		y = 500;
 	}
@@ -159,16 +166,37 @@ public:
 //		delete m_pAction;
 //		m_pAction = nullptr;
 	}
-	update()
+	Animate* WL_Player::CreateAnimate(PlayerState nPlayerState)
+	{
+		string sSql = "select AnimationID, Frame from WL_Animation where ObjectID = " + IntToString(m_nUUID) + " and Type = " + IntToString(nPlayerState);
+		WL_DB::m_gDB->Execute(sSql);
+		vector<map<string, string>> vecResult = WL_DB::m_gDB->GetResult();
+		if(vecResult.size() != 1)
+		{
+			pAnimation = nullptr;
+			break;
+		}
+		CCAnimation *animation=CCAnimation::create();
+		vector<string> vecFrame = WL_Split(vecResult[0]["Frame"], ",");
+		int nSize = vecFrame.size();
+		WL_Image* image = nullptr;
+		for(int i = 0; i < nSize; i++)
+		{
+			image = WL_ImageStore::m_gImageStore->CreateImage(StringToInt(vecFrame[i]));
+			animation->addSpriteFrameWithFileName(image->m_sFileName.c_str());
+		}
+		return CCAnimate::create(animation)));
+	}
+	update(this)
 	{
 		//Idle
-		if(WL_Animation->IsFinish())
+		if(m_pPlayerAnimate->isDone())
 		{
-			WL_Animation = m_gAnimationManager->CreateAnimation(m_nRoleIDInDB, Idle);
+			m_pPlayerAnimate = WL_AnimationStore->CreateAnimate(m_nUUID, Idle);
 			m_nState = Idle;
 			if(m_pWeapon != nullptr)
 			{
-				m_pWeaponAnimation = m_gAnimationManager->CreateAnimation(m_pWeapon->GetUUID(), Idle);
+				m_pWeaponAnimation = WL_AnimationStore->CreateAnimate(m_pWeapon->GetUUID(), Idle);
 				m_gCollisionManager->AddObject(m_pWeapon->GetID());
 			}
 		}
@@ -286,15 +314,15 @@ public:
 	}
 };
 
-class WL_AnimationManager
+class WL_AnimationStore
 {
 private:
 	map<int, WL_Animation*> m_mapAnimations;
 public:
-	static WL_AnimationManager* m_gAnimationManager;//int从1开始
+	static WL_AnimationStore* m_gAnimationStore;//int从1开始
 
-	WL_AnimationManager(void);
-	~WL_AnimationManager(void);
+	WL_AnimationStore(void);
+	~WL_AnimationStore(void);
 	WL_Animation* GetAnimation(int nAnimationID);
 	WL_Animation* CreateAnimation(int nObjectID, int nTypeID);
 };
@@ -311,7 +339,7 @@ WL_Animation* WL_AnimationManager::CreateAnimation(int nObjectID, int nTypeID)
 	WL_Animation* pAnimation = nullptr;
 	do
 	{
-		//查找动画是否已经存在
+		
 		map<int, WL_Animation*>::iterator iter;
 		for(iter = m_mapAnimations.begin();iter != m_mapAnimations.end();iter++) 
 		{
@@ -320,11 +348,11 @@ WL_Animation* WL_AnimationManager::CreateAnimation(int nObjectID, int nTypeID)
 				return iter->second;
 			}
 		}
-		//创建动画
+		
 		string sSql = "select AnimationID, Frame from WL_Animation where ObjectID = " + IntToString(nObjectID) + " and Type = " + IntToString(nTypeID);
 		WL_DB::m_gDB->Execute(sSql);
 		vector<map<string, string>> vecResult = WL_DB::m_gDB->GetResult();
-		if(vecResult.size() != 1)//理论上只有一个动画
+		if(vecResult.size() != 1)
 		{
 			pAnimation = nullptr;
 			break;
@@ -333,7 +361,7 @@ WL_Animation* WL_AnimationManager::CreateAnimation(int nObjectID, int nTypeID)
 		//m_mapAnimations[vecResult[0]["AnimationID"]] = pAnimation;
 		int n = StringToInt(vecResult[0]["AnimationID"]);
 		m_mapAnimations[n] = pAnimation;
-		vector<string> vecFrame = WL_Split(vecResult[0]["Frame"], ",");//帧以 第1帧图片ID，第2帧图片ID，第3帧图片ID 的形式保存
+		vector<string> vecFrame = WL_Split(vecResult[0]["Frame"], ",");
 		int nSize = vecFrame.size();
 		for(int i = 0; i < nSize; i++)
 			pAnimation->m_vecFrame.push_back(StringToInt(vecFrame[i]));
@@ -344,7 +372,7 @@ class WL_Image
 {
 public:
 	string m_sFileName;
-	int m_nSrcX;//该图片在图片文件中的坐标
+	int m_nSrcX;
 	int m_nSrcY;
 	int m_nWidth;
 	int m_nHeight;
@@ -402,7 +430,7 @@ WL_Image* WL_ImageStore::CreateImage(int nImageId)
 	}while(false);
 	return pImage;
 }
-class WL_RanderObject
+class WL_Rander
 {
 public:
 	int m_nDstX;//屏幕坐标
@@ -418,7 +446,8 @@ private:
 	
 	
 public:
-	std::map<int, WL_RanderObject*> m_mapRanderObjects;
+	std::map<int, WL_Rander*> m_mapRanderImages;
+	std::map<int, WL_Rander*> m_mapRanderAnimations;
 	static WL_RanderManager* m_gRanderManager;
 
 	WL_RanderManager(void);
