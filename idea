@@ -53,15 +53,15 @@ DATA
 	unsigned char a;
 };
 
-std::map<int, WL_Rander*> m_mapRanderAnimations;
+.h
+
 
 MainScene::MainScene(void)
 {
 	WL_InputManager::m_gInputManager = new WL_InputManager();
-	WL_AnimationManager::m_gAnimationManager = new WL_AnimationManager();
+	WL_AnimationStore::m_gAnimationStore = new WL_AnimationStore();
 	WL_DB::m_gDB = new WL_DB("DB.db");
 	WL_ImageStore::m_gImageStore = new WL_ImageStore();
-	WL_RanderManager::m_gRanderManager = new WL_RanderManager();
 
 	WL_Player* player = new WL_Player();
 	m_vecPlayer.push_back(player);
@@ -73,10 +73,10 @@ MainScene::~MainScene(void)
 		delete WL_InputManager::m_gInputManager;
 		WL_InputManager::m_gInputManager = nullptr;
 	}
-	if(WL_AnimationManager::m_gAnimationManager != NULL)
+	if(WL_AnimationStore::m_gAnimationStore != NULL)
 	{
-		delete WL_AnimationManager::m_gAnimationManager;
-		WL_AnimationManager::m_gAnimationManager = nullptr;
+		delete WL_AnimationStore::m_gAnimationStore;
+		WL_AnimationStore::m_gAnimationStore = nullptr;
 	}
 	if(WL_DB::m_gDB != NULL)
 	{
@@ -87,11 +87,6 @@ MainScene::~MainScene(void)
 	{
 		delete WL_ImageStore::m_gImageStore;
 		WL_ImageStore::m_gImageStore = nullptr;
-	}
-	if(WL_RanderManager::m_gRanderManager != NULL)
-	{
-		delete WL_RanderManager::m_gRanderManager;
-		WL_RanderManager::m_gRanderManager = nullptr;
 	}
 
 	for(unsigned int i = 0;i<m_vecPlayer.size();i++)
@@ -109,18 +104,6 @@ void MainScene::update(float dt)
 		m_vecPlayer[i]->update(this);
 	}
 //	WL_CollisionManager::m_gCollisionManager->update()
-	
-	std::map<int, WL_Rander*>::iterator iter;
-	for(iter=m_mapRanderAnimation.begin();iter=m_mapRanderAnimation.end();iter++)
-	{
-		CCSprite *mainsprite=CCSprite::create("catBody1.png");
-		CCAnimation *animation=CCAnimation::create();
-		animation->addSpriteFrameWithFileName("catBody1.png");
-		animation->addSpriteFrameWithFileName("catBody2-4.png");
-		animation->addSpriteFrameWithFileName("catBody3.png");
-		animation->addSpriteFrameWithFileName("catBody2-4.png");
-		mainsprite->runAction((CCAnimate::create(animation)));
-	}
 	/*
 	this->removeAllChildren();
 	CCSprite* sprite = nullptr;
@@ -161,7 +144,9 @@ public:
 	WL_Player(Scene* pScene):m_nUUID(1)
 	{
 		m_pPlayer=CCSprite::create();
-		m_pPlayer->setPosition(CCPoint(500, 500));
+		x = 500;
+		y = 500;
+		m_pPlayer->setPosition(CCPoint(x, y));
 		pScene->addChild(m_pPlayer, 3);
 	}
 	~WL_Plyer()
@@ -195,11 +180,11 @@ public:
 		//Idle
 		if(m_pPlayerAnimate->isDone())
 		{
-			m_pPlayerAnimate = WL_AnimationStore->CreateAnimate(m_nUUID, Idle);
+			m_pPlayerAnimate = WL_AnimationStore->GetAnimate(m_nUUID, Idle);
 			m_nState = Idle;
 //			if(m_pWeapon != nullptr)
 //			{
-//				m_pWeaponAnimation = WL_AnimationStore->CreateAnimate(m_pWeapon->GetUUID(), Idle);
+//				m_pWeaponAnimation = WL_AnimationStore->GetAnimate(m_pWeapon->GetUUID(), Idle);
 //				m_gCollisionManager->AddObject(m_pWeapon->GetID());
 //			}
 			m_pPlayer->runAction(m_pPlayerAnimate);
@@ -270,6 +255,7 @@ public:
 //			m_pRander->Ralate(bRalote);
 //		}
 //		m_nCurrentFrameIndex++;
+		m_pPlayer->setPosition(CCPoint(x, y));
 	}
 }
 
@@ -307,16 +293,19 @@ class WL_Animation
 public:
 	int m_nObjectID;//对象在数据库里的UUID
 	int m_nTypeID;//对象的动画类型，如跑，跳，攻击
-	vector<int> m_vecFrame;//动画帧图片列表，保存的是图片ID
+//	vector<int> m_vecFrame;//动画帧图片列表，保存的是图片ID
+	Animatite* m_pAnimatite;
 	WL_Animation(int nObjectID, int nTypeID)
 	{
 		m_nObjectID = nObjectID;
 		m_nTypeID = nTypeID;
 	}
+	/*
 	int GetMaxFrame()
 	{
 		return m_vecFrame.size();
 	}
+	*/
 };
 
 class WL_AnimationStore
@@ -329,9 +318,10 @@ public:
 	WL_AnimationStore(void);
 	~WL_AnimationStore(void);
 	WL_Animation* GetAnimation(int nAnimationID);
-	WL_Animation* CreateAnimation(int nObjectID, int nTypeID);
+	Animatite* GetAnimation(int nObjectID, int nTypeID);
+	
 };
-WL_Animation* WL_AnimationManager::GetAnimation(int nAnimationID)
+WL_Animation* WL_AnimationStore::GetAnimation(int nAnimationID)
 {
 	if (m_mapAnimations.find(nAnimationID) == m_mapAnimations.end())
 		return nullptr;
@@ -339,7 +329,7 @@ WL_Animation* WL_AnimationManager::GetAnimation(int nAnimationID)
 		return m_mapAnimations[nAnimationID];
 }
 
-WL_Animation* WL_AnimationManager::CreateAnimation(int nObjectID, int nTypeID)
+Animatite* WL_AnimationStore::CreateAnimation(int nObjectID, int nTypeID)
 {
 	WL_Animation* pAnimation = nullptr;
 	do
@@ -350,7 +340,7 @@ WL_Animation* WL_AnimationManager::CreateAnimation(int nObjectID, int nTypeID)
 		{
 			if(iter->second->m_nObjectID == nObjectID && iter->second->m_nTypeID == nTypeID)
 			{
-				return iter->second;
+				return iter->second->m_pAnimatite;
 			}
 		}
 		
@@ -366,12 +356,18 @@ WL_Animation* WL_AnimationManager::CreateAnimation(int nObjectID, int nTypeID)
 		//m_mapAnimations[vecResult[0]["AnimationID"]] = pAnimation;
 		int n = StringToInt(vecResult[0]["AnimationID"]);
 		m_mapAnimations[n] = pAnimation;
+		CCAnimation *animation=CCAnimation::create();
 		vector<string> vecFrame = WL_Split(vecResult[0]["Frame"], ",");
 		int nSize = vecFrame.size();
+		WL_Image* image = nullptr;
 		for(int i = 0; i < nSize; i++)
-			pAnimation->m_vecFrame.push_back(StringToInt(vecFrame[i]));
+		{
+			image = WL_ImageStore::m_gImageStore->CreateImage(StringToInt(vecFrame[i]));
+			animation->addSpriteFrameWithFileName(image->m_sFileName.c_str());
+		}
+		pAnimation->m_pAnimatite = CCAnimate::create(animation)))
 	}while(false);
-	return pAnimation;
+	return pAnimation->m_pAnimatite;
 }
 class WL_Image
 {
@@ -393,27 +389,28 @@ public:
 
 	WL_ImageStore(void);
 	~WL_ImageStore(void);
+	bool IsHasImage(int nImageId);
 	WL_Image* GetImage(int nImageId);
-	WL_Image* CreateImage(int nImageId);
 };
-WL_Image* WL_ImageStore::GetImage(int nImageId)
+bool WL_ImageStore::IsHasImage(int nImageId)
 {
 	map<int, WL_Image*>::iterator iter = m_mapImages.find(nImageId);
 	if(iter != m_mapImages.end())
 	{
-		return iter->second;
+		return true;
 	}
 	else
-		return nullptr;
+		return false;
 }
 
-WL_Image* WL_ImageStore::CreateImage(int nImageId)
+WL_Image* WL_ImageStore::GetImage(int nImageId)
 {
 	WL_Image* pImage = nullptr;
 	do
 	{
 		//²éÕÒÍ¼Æ¬ÊÇ·ñÒÑ¾­´æÔÚ
-		pImage = GetImage(nImageId);
+		if(IsHasImage(nImageId))
+			return m_mapImages[nImageId];
 		if(pImage != nullptr)return pImage;
 		//´´½¨Í¼Æ¬
 		string sSql = "select FileName, SrcX, SrcY, Width, Height from WL_Image where ImageID = " + IntToString(nImageId);
